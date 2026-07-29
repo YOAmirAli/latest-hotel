@@ -11,9 +11,47 @@ import {
   useElements,
 } from "@stripe/react-stripe-js"
 
-const stripePromise = loadStripe(
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
-)
+// Only initialize Stripe if publishable key exists
+const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+  ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+  : null
+
+function ServiceCheckbox({
+  label,
+  desc,
+  price,
+  checked,
+  onChange,
+}: {
+  label: string
+  desc: string
+  price: string
+  checked: boolean
+  onChange: (checked: boolean) => void
+}) {
+  return (
+    <label className="flex items-center justify-between p-6 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer group">
+      <div className="flex gap-4 items-center">
+        <div className="w-12 h-12 flex items-center justify-center bg-emerald-100 rounded-full text-emerald-700">
+          <span className="material-symbols-outlined">restaurant</span>
+        </div>
+        <div>
+          <h3 className="font-title-lg text-title-lg text-gray-900">{label}</h3>
+          <p className="text-gray-600 text-body-md">{desc}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-4">
+        <span className="font-label-md text-emerald-600 font-bold">{price}</span>
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          className="w-6 h-6 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+        />
+      </div>
+    </label>
+  )
+}
 
 function BookingFormContent() {
   const searchParams = useSearchParams()
@@ -85,6 +123,7 @@ function BookingFormContent() {
     setError("")
 
     try {
+      // 1. Create booking
       const bookingRes = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -105,6 +144,13 @@ function BookingFormContent() {
         throw new Error(bookingData.error || "Booking creation failed")
       }
 
+      // 2. If Stripe key is missing, skip payment and go to success
+      if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
+        router.push(`/booking/success?bookingId=${bookingData.data.bookingId}`)
+        return
+      }
+
+      // 3. Proceed with Stripe payment
       if (!stripe || !elements) {
         throw new Error("Stripe not initialized")
       }
@@ -133,7 +179,6 @@ function BookingFormContent() {
 
       router.push(`/booking/success?bookingId=${bookingData.data.bookingId}`)
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message || "An error occurred")
     } finally {
@@ -144,9 +189,9 @@ function BookingFormContent() {
   if (!roomId) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-20 text-center">
-        <h2 className="font-headline-sm text-primary mb-4">No Room Selected</h2>
-        <p className="text-on-surface-variant mb-8">Please browse rooms and select one to book.</p>
-        <Link href="/rooms" className="bg-primary text-on-primary px-8 py-3 rounded-lg font-label-md hover:opacity-90">
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">No Room Selected</h2>
+        <p className="text-gray-600 mb-8">Please browse rooms and select one to book.</p>
+        <Link href="/rooms" className="bg-emerald-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-emerald-700">
           Browse Rooms
         </Link>
       </div>
@@ -154,12 +199,12 @@ function BookingFormContent() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-margin-mobile md:px-margin-desktop">
+    <div className="max-w-4xl mx-auto px-4 md:px-10">
       <header className="mb-12 text-center">
-        <h1 className="font-display-lg text-display-lg-mobile md:text-display-lg text-primary mb-4">
+        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
           Complete Your Reservation
         </h1>
-        <p className="text-on-surface-variant max-w-lg mx-auto">
+        <p className="text-gray-600 max-w-lg mx-auto">
           {roomName} · {nights} Nights · {guests} Guests
         </p>
       </header>
@@ -176,79 +221,79 @@ function BookingFormContent() {
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
                     isActive || isCompleted
-                      ? "bg-primary text-on-primary border-primary"
-                      : "bg-surface-container-high text-outline border-outline-variant"
+                      ? "bg-emerald-600 text-white border-emerald-600"
+                      : "bg-gray-100 text-gray-400 border-gray-300"
                   }`}
                 >
                   {isCompleted ? (
                     <span className="material-symbols-outlined text-sm">check</span>
                   ) : (
-                    <span className="font-label-md">{stepNum}</span>
+                    <span className="font-medium">{stepNum}</span>
                   )}
                 </div>
-                <span className={`font-label-sm ${isActive ? "text-on-surface" : "text-outline"}`}>
+                <span className={`text-sm font-medium ${isActive ? "text-gray-900" : "text-gray-400"}`}>
                   {label}
                 </span>
               </div>
             )
           })}
         </div>
-        <div className="absolute top-5 left-1/2 -translate-x-1/2 w-full max-w-[400px] h-0.5 bg-outline-variant/30 z-0" />
+        <div className="absolute top-5 left-1/2 -translate-x-1/2 w-full max-w-[400px] h-0.5 bg-gray-200 z-0" />
         <div
-          className="absolute top-5 left-[calc(50%-200px)] h-0.5 bg-primary transition-all duration-500 z-0"
+          className="absolute top-5 left-[calc(50%-200px)] h-0.5 bg-emerald-600 transition-all duration-500 z-0"
           style={{ width: `${((step - 1) / 2) * 400}px` }}
         />
       </div>
 
-      <div className="bg-surface-container-lowest border border-[#EAE2D5] rounded-xl shadow-[0_20px_50px_rgba(1,2,2,0.05)] overflow-hidden">
+      <div className="bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
         <div className="p-8 md:p-12">
           {error && (
-            <div className="mb-4 p-4 bg-error-container text-on-error-container rounded-lg">
+            <div className="mb-4 p-4 bg-red-50 text-red-600 rounded-lg border border-red-200">
               {error}
             </div>
           )}
 
           {step === 1 && (
             <div className="space-y-6">
-              <h2 className="font-headline-sm text-headline-sm text-primary mb-8">Personal Information</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+              <h2 className="text-2xl font-bold text-gray-900 mb-8">Personal Information</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="font-label-md text-on-surface-variant">First Name *</label>
+                  <label className="text-sm font-medium text-gray-700">First Name *</label>
                   <input
                     type="text"
                     value={guestInfo.firstName}
                     onChange={(e) => setGuestInfo({ ...guestInfo, firstName: e.target.value })}
-                    className="w-full bg-transparent border border-outline-variant rounded-lg p-3 focus:border-secondary focus:ring-1 focus:ring-secondary outline-none"
+                    className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="font-label-md text-on-surface-variant">Last Name *</label>
+                  <label className="text-sm font-medium text-gray-700">Last Name *</label>
                   <input
                     type="text"
                     value={guestInfo.lastName}
                     onChange={(e) => setGuestInfo({ ...guestInfo, lastName: e.target.value })}
-                    className="w-full bg-transparent border border-outline-variant rounded-lg p-3 focus:border-secondary focus:ring-1 focus:ring-secondary outline-none"
+                    className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
                     required
                   />
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                  <label className="font-label-md text-on-surface-variant">Email Address *</label>
+                  <label className="text-sm font-medium text-gray-700">Email Address *</label>
                   <input
                     type="email"
                     value={guestInfo.email}
                     onChange={(e) => setGuestInfo({ ...guestInfo, email: e.target.value })}
-                    className="w-full bg-transparent border border-outline-variant rounded-lg p-3 focus:border-secondary focus:ring-1 focus:ring-secondary outline-none"
+                    className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
                     required
                   />
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                  <label className="font-label-md text-on-surface-variant">Phone Number</label>
+                  <label className="text-sm font-medium text-gray-700">Phone Number</label>
                   <input
                     type="tel"
                     value={guestInfo.phone}
                     onChange={(e) => setGuestInfo({ ...guestInfo, phone: e.target.value })}
-                    className="w-full bg-transparent border border-outline-variant rounded-lg p-3 focus:border-secondary focus:ring-1 focus:ring-secondary outline-none"
+                    className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
                   />
                 </div>
               </div>
@@ -257,7 +302,7 @@ function BookingFormContent() {
 
           {step === 2 && (
             <div>
-              <h2 className="font-headline-sm text-headline-sm text-primary mb-8">Enhance Your Stay</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-8">Enhance Your Stay</h2>
               <div className="space-y-4">
                 <ServiceCheckbox
                   label="Signature Breakfast"
@@ -286,62 +331,70 @@ function BookingFormContent() {
 
           {step === 3 && (
             <div>
-              <h2 className="font-headline-sm text-headline-sm text-primary mb-8">Review & Confirm</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+              <h2 className="text-2xl font-bold text-gray-900 mb-8">Review & Confirm</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="md:col-span-2 space-y-6">
-                  <div className="bg-surface-container-low p-6 rounded-lg border border-[#EAE2D5]">
-                    <h3 className="font-label-sm text-on-surface-variant uppercase tracking-widest mb-4">Reservation Summary</h3>
+                  <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                    <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-4">Reservation Summary</h3>
                     <div className="flex justify-between mb-2">
-                      <span className="text-on-surface-variant">{roomName} ({nights} Nights)</span>
-                      <span className="font-bold text-primary">${total.toFixed(2)}</span>
+                      <span className="text-gray-600">{roomName} ({nights} Nights)</span>
+                      <span className="font-bold text-gray-900">${total.toFixed(2)}</span>
                     </div>
                     {selectedServices.breakfast && (
                       <div className="flex justify-between mb-2">
-                        <span className="text-on-surface-variant">Signature Breakfast ({nights} Days)</span>
-                        <span className="font-bold text-primary">${servicePrices.breakfast.toFixed(2)}</span>
+                        <span className="text-gray-600">Signature Breakfast ({nights} Days)</span>
+                        <span className="font-bold text-gray-900">${servicePrices.breakfast.toFixed(2)}</span>
                       </div>
                     )}
                     {selectedServices.airport && (
                       <div className="flex justify-between mb-2">
-                        <span className="text-on-surface-variant">Airport Transfer</span>
-                        <span className="font-bold text-primary">${servicePrices.airport.toFixed(2)}</span>
+                        <span className="text-gray-600">Airport Transfer</span>
+                        <span className="font-bold text-gray-900">${servicePrices.airport.toFixed(2)}</span>
                       </div>
                     )}
                     {selectedServices.lateCheckout && (
                       <div className="flex justify-between mb-2">
-                        <span className="text-on-surface-variant">Late Check-out</span>
-                        <span className="font-bold text-primary">${servicePrices.lateCheckout.toFixed(2)}</span>
+                        <span className="text-gray-600">Late Check-out</span>
+                        <span className="font-bold text-gray-900">${servicePrices.lateCheckout.toFixed(2)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between pt-4 border-t border-outline-variant/30 mt-4">
-                      <span className="font-title-lg text-title-lg text-primary">Total Amount</span>
-                      <span className="font-title-lg text-title-lg text-secondary">${calculateTotal().toFixed(2)}</span>
+                    <div className="flex justify-between pt-4 border-t border-gray-200 mt-4">
+                      <span className="text-lg font-semibold text-gray-900">Total Amount</span>
+                      <span className="text-lg font-semibold text-emerald-600">${calculateTotal().toFixed(2)}</span>
                     </div>
                   </div>
                   <div className="space-y-4">
-                    <h3 className="font-label-sm text-on-surface-variant uppercase tracking-widest">Payment Method</h3>
-                    <div className="p-4 border border-outline-variant rounded-lg">
-                      <CardElement
-                        options={{
-                          style: {
-                            base: {
-                              fontSize: "16px",
-                              color: "#191c1e",
-                              "::placeholder": { color: "#747879" },
+                    <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-widest">Payment Method</h3>
+                    {process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ? (
+                      <div className="p-4 border border-gray-300 rounded-lg">
+                        <CardElement
+                          options={{
+                            style: {
+                              base: {
+                                fontSize: "16px",
+                                color: "#1a1a1a",
+                                "::placeholder": { color: "#999" },
+                              },
                             },
-                          },
-                        }}
-                      />
-                    </div>
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="p-4 border border-gray-300 rounded-lg bg-gray-50 text-gray-600">
+                        💳 Payment will be processed upon check-in.
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="hidden md:block">
-                  <div className="rounded-lg overflow-hidden border border-[#EAE2D5] h-full flex flex-col bg-surface-container-low">
-                    <div className="bg-cover bg-center h-48 w-full bg-surface-container-highest" />
+                  <div className="rounded-lg overflow-hidden border border-gray-200 h-full flex flex-col bg-gray-50">
+                    <div className="h-48 bg-emerald-100 flex items-center justify-center text-6xl">
+                      🏨
+                    </div>
                     <div className="p-4 bg-white flex-grow">
-                      <p className="font-label-sm text-secondary-container bg-secondary px-2 py-1 rounded w-fit mb-2">SELECTED ROOM</p>
-                      <h4 className="font-title-lg text-title-lg text-primary">{roomName}</h4>
-                      <p className="text-body-md text-on-surface-variant mt-2">Room {roomId} • {nights} Nights</p>
+                      <p className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded w-fit mb-2">SELECTED ROOM</p>
+                      <h4 className="text-lg font-semibold text-gray-900">{roomName}</h4>
+                      <p className="text-sm text-gray-600 mt-2">Room {roomId} • {nights} Nights</p>
                     </div>
                   </div>
                 </div>
@@ -349,10 +402,10 @@ function BookingFormContent() {
             </div>
           )}
 
-          <div className="mt-12 flex justify-between items-center border-t border-outline-variant/30 pt-8">
+          <div className="mt-12 flex justify-between items-center border-t border-gray-200 pt-8">
             <button
               onClick={handleBack}
-              className={`flex items-center gap-2 text-on-surface-variant hover:text-primary font-label-md transition-all ${step === 1 ? "invisible" : ""}`}
+              className={`flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium transition-all ${step === 1 ? "invisible" : ""}`}
             >
               <span className="material-symbols-outlined">arrow_back</span>
               <span>Back</span>
@@ -360,7 +413,7 @@ function BookingFormContent() {
             <button
               onClick={step === 3 ? handleSubmit : handleNext}
               disabled={loading}
-              className="bg-primary text-on-primary px-8 py-3 rounded-lg font-label-md hover:opacity-90 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50"
+              className="bg-emerald-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-emerald-700 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50"
             >
               {loading ? (
                 "Processing..."
@@ -383,49 +436,16 @@ function BookingFormContent() {
   )
 }
 
-function ServiceCheckbox({
-  label,
-  desc,
-  price,
-  checked,
-  onChange,
-}: {
-  label: string
-  desc: string
-  price: string
-  checked: boolean
-  onChange: (checked: boolean) => void
-}) {
-  return (
-    <label className="flex items-center justify-between p-6 border border-outline-variant rounded-lg hover:bg-surface-container-low transition-colors cursor-pointer group">
-      <div className="flex gap-4 items-center">
-        <div className="w-12 h-12 flex items-center justify-center bg-secondary-fixed rounded-full text-on-secondary-fixed">
-          <span className="material-symbols-outlined">restaurant</span>
-        </div>
-        <div>
-          <h3 className="font-title-lg text-title-lg text-primary">{label}</h3>
-          <p className="text-on-surface-variant text-body-md">{desc}</p>
-        </div>
-      </div>
-      <div className="flex items-center gap-4">
-        <span className="font-label-md text-secondary font-bold">{price}</span>
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={(e) => onChange(e.target.checked)}
-          className="w-6 h-6 rounded border-outline-variant text-secondary focus:ring-secondary"
-        />
-      </div>
-    </label>
-  )
-}
-
 export default function BookingPage() {
   return (
     <Suspense fallback={<div className="text-center py-20">Loading booking form...</div>}>
-      <Elements stripe={stripePromise}>
+      {process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ? (
+        <Elements stripe={stripePromise}>
+          <BookingFormContent />
+        </Elements>
+      ) : (
         <BookingFormContent />
-      </Elements>
+      )}
     </Suspense>
   )
 }

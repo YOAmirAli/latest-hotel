@@ -39,7 +39,7 @@ export default function LoginPage() {
         } else if (payload.role === 'staff') {
           router.push('/staff/dashboard')
         } else {
-          router.push('/')
+          router.push('/dashboard')  // <-- FIXED: redirect to dashboard
         }
       } else {
         setError(data.error || 'Login failed')

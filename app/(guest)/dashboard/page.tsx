@@ -40,6 +40,7 @@ export default function UserDashboard() {
   const [loading, setLoading] = useState(true)
   const [loadingHotels, setLoadingHotels] = useState(true)
   const [userName, setUserName] = useState('')
+  const [userEmail, setUserEmail] = useState('')
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -49,7 +50,10 @@ export default function UserDashboard() {
     }
     try {
       const payload = JSON.parse(atob(token.split('.')[1]))
-      setUserName(payload.firstName || payload.email || 'User')
+      // Use first name from token, fallback to email
+      const name = payload.firstName || payload.email?.split('@')[0] || 'User'
+      setUserName(name)
+      setUserEmail(payload.email || '')
     } catch {
       router.push('/login')
     }
@@ -94,23 +98,28 @@ export default function UserDashboard() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-10 py-12">
-      {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-emerald-600 to-emerald-800 rounded-2xl p-8 mb-8 text-white">
-        <h1 className="text-3xl md:text-4xl font-bold">Welcome back, {userName}! 👋</h1>
-        <p className="text-emerald-100 mt-2">Explore luxury stays in Islamabad</p>
-        <Link
-          href="/rooms"
-          className="inline-block mt-4 bg-white text-emerald-700 px-6 py-2 rounded-lg font-medium hover:bg-emerald-50 transition-colors"
-        >
-          Browse Rooms →
-        </Link>
+      {/* Welcome Section - Professional */}
+      <div className="bg-gradient-to-r from-emerald-600 to-emerald-800 rounded-2xl p-8 mb-8 text-white shadow-lg">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold">Welcome back, {userName}! 👋</h1>
+            <p className="text-emerald-100 mt-1">{userEmail}</p>
+            <p className="text-emerald-100/80 mt-2">Explore luxury stays in Islamabad</p>
+          </div>
+          <Link
+            href="/rooms"
+            className="bg-white text-emerald-700 px-6 py-2 rounded-lg font-medium hover:bg-emerald-50 transition-colors shadow-md"
+          >
+            Browse Rooms →
+          </Link>
+        </div>
       </div>
 
-      {/* Quick Stats */}
+      {/* Quick Stats - Professional Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">🏨</span>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center text-2xl">🏨</div>
             <div>
               <p className="text-sm text-gray-500">Total Bookings</p>
               <p className="text-2xl font-bold text-gray-900">{bookings.length}</p>
@@ -118,8 +127,8 @@ export default function UserDashboard() {
           </div>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">✅</span>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-2xl">✅</div>
             <div>
               <p className="text-sm text-gray-500">Upcoming Stays</p>
               <p className="text-2xl font-bold text-gray-900">
@@ -129,8 +138,8 @@ export default function UserDashboard() {
           </div>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">📍</span>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center text-2xl">📍</div>
             <div>
               <p className="text-sm text-gray-500">City</p>
               <p className="text-2xl font-bold text-gray-900">Islamabad</p>
@@ -152,7 +161,7 @@ export default function UserDashboard() {
           <div className="text-center py-8 text-gray-500">Loading your bookings...</div>
         ) : bookings.length === 0 ? (
           <div className="text-center py-12">
-            <span className="text-6xl block mb-4">🏖️</span>
+            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl">🏖️</div>
             <h3 className="text-lg font-medium text-gray-900">No bookings yet</h3>
             <p className="text-gray-500 mt-2">Start your journey with LuxeStay today!</p>
             <Link
@@ -165,7 +174,7 @@ export default function UserDashboard() {
         ) : (
           <div className="space-y-4">
             {bookings.map((booking) => (
-              <div key={booking.id} className="border border-gray-100 rounded-lg p-4 hover:border-emerald-200 transition-colors">
+              <div key={booking.id} className="border border-gray-100 rounded-lg p-4 hover:border-emerald-200 transition-colors hover:shadow-sm">
                 <div className="flex flex-col md:flex-row justify-between gap-4">
                   <div>
                     <h4 className="font-semibold text-gray-900">{booking.room.roomType.hotel.name}</h4>
