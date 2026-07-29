@@ -23,27 +23,25 @@ async function main() {
     console.log('✅ Admin created')
   }
 
-  // 2. Create a Hotel Registration first (required for foreign key)
-  const registration = await prisma.hotelRegistration.create({
-    data: {
-      hotelName: 'Grand Islamabad Hotel',
-      managerEmail: 'manager@grandislamabad.com',
-      managerFirstName: 'Manager',
-      managerLastName: 'User',
-      status: 'approved',
-      hotelAddress: 'F-6, Islamabad',
-      hotelCity: 'Islamabad',
-      hotelCountry: 'Pakistan',
-      hotelPhone: '+92 51 1234567',
-      hotelEmail: 'info@grandislamabad.com',
-      description: 'Luxury hotel with stunning views',
-    },
-  })
-  console.log('✅ Hotel registration created')
+  // Create hotel registration
+  let reg = await prisma.hotelRegistration.findFirst()
+  if (!reg) {
+    reg = await prisma.hotelRegistration.create({
+      data: {
+        hotelName: 'Grand Islamabad Hotel',
+        managerEmail: 'manager@grandislamabad.com',
+        managerFirstName: 'Hotel',
+        managerLastName: 'Manager',
+        status: 'approved',
+      }
+    })
+  }
 
-  // 3. Create a Hotel using the registration ID
-  const hotel = await prisma.hotel.create({
-    data: {
+  // Create a hotel
+  const hotel = await prisma.hotel.upsert({
+    where: { registrationId: 1 },
+    update: {},
+    create: {
       name: 'Grand Islamabad Hotel',
       description: 'Luxury hotel with stunning views of the Margalla Hills. Located in the heart of Islamabad, offering world-class amenities and exceptional service.',
       address: 'F-6, Islamabad',
@@ -53,7 +51,7 @@ async function main() {
       email: 'info@grandislamabad.com',
       status: 'approved',
       imageUrl: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=600&fit=crop',
-      registrationId: registration.id,
+      registrationId: 1,
     },
   })
   console.log('✅ Hotel created')
