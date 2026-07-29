@@ -15,9 +15,11 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
+    // Create uploads directory
     const uploadDir = path.join(process.cwd(), 'public/uploads', folder)
     await mkdir(uploadDir, { recursive: true })
 
+    // Generate unique filename
     const ext = file.name.split('.').pop()
     const filename = `${Date.now()}.${ext}`
     const filePath = path.join(uploadDir, filename)
