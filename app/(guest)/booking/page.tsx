@@ -10,11 +10,38 @@ import {
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js"
+import { formatPrice } from "@/lib/utils/currency"
 
 // Only initialize Stripe if publishable key exists
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
   : null
+
+function StripeCardInput({ onStripeReady }: { onStripeReady: (stripe: any, elements: any) => void }) {
+  const stripe = useStripe()
+  const elements = useElements()
+
+  // Expose stripe/elements to parent if needed
+  if (stripe && elements) {
+    onStripeReady(stripe, elements)
+  }
+
+  return (
+    <div className="p-4 border border-gray-300 rounded-lg">
+      <CardElement
+        options={{
+          style: {
+            base: {
+              fontSize: "16px",
+              color: "#1a1a1a",
+              "::placeholder": { color: "#999" },
+            },
+          },
+        }}
+      />
+    </div>
+  )
+}
 
 function ServiceCheckbox({
   label,
@@ -56,8 +83,6 @@ function ServiceCheckbox({
 function BookingFormContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const stripe = useStripe()
-  const elements = useElements()
 
   const roomId = parseInt(searchParams.get("roomId") || "0")
   const checkIn = searchParams.get("checkIn") || ""
@@ -82,10 +107,12 @@ function BookingFormContent() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
+  const [stripeRef, setStripeRef] = useState<{ stripe: any; elements: any } | null>(null)
+
   const servicePrices = {
-    breakfast: 45 * nights,
-    airport: 120,
-    lateCheckout: 75,
+    breakfast: 3500 * nights,
+    airport: 6000,
+    lateCheckout: 4000,
   }
 
   const calculateTotal = () => {
@@ -144,17 +171,14 @@ function BookingFormContent() {
         throw new Error(bookingData.error || "Booking creation failed")
       }
 
-      // 2. If Stripe key is missing, skip payment and go to success
-      if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
+      // 2. If Stripe key is missing or not initialized, skip payment step
+      if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || !stripeRef) {
         router.push(`/booking/success?bookingId=${bookingData.data.bookingId}`)
         return
       }
 
-      // 3. Proceed with Stripe payment
-      if (!stripe || !elements) {
-        throw new Error("Stripe not initialized")
-      }
-
+      // 3. Proceed with Stripe payment if available
+      const { stripe, elements } = stripeRef
       const cardElement = elements.getElement(CardElement)
       if (!cardElement) {
         throw new Error("Card element not found")
@@ -288,9 +312,10 @@ function BookingFormContent() {
                   />
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium text-gray-700">Phone Number</label>
+                  <label className="text-sm font-medium text-gray-700">Phone Number (WhatsApp)</label>
                   <input
                     type="tel"
+                    placeholder="03465723593"
                     value={guestInfo.phone}
                     onChange={(e) => setGuestInfo({ ...guestInfo, phone: e.target.value })}
                     className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
@@ -306,22 +331,22 @@ function BookingFormContent() {
               <div className="space-y-4">
                 <ServiceCheckbox
                   label="Signature Breakfast"
-                  desc={`Daily gourmet breakfast in our rooftop lounge.`}
-                  price={`$${servicePrices.breakfast} total`}
+                  desc="Daily gourmet breakfast in our rooftop lounge."
+                  price={`${formatPrice(servicePrices.breakfast)} total`}
                   checked={selectedServices.breakfast}
                   onChange={(checked) => setSelectedServices({ ...selectedServices, breakfast: checked })}
                 />
                 <ServiceCheckbox
                   label="Airport Transfer"
                   desc="Private chauffeur service to/from international airport."
-                  price={`$${servicePrices.airport}`}
+                  price={formatPrice(servicePrices.airport)}
                   checked={selectedServices.airport}
                   onChange={(checked) => setSelectedServices({ ...selectedServices, airport: checked })}
                 />
                 <ServiceCheckbox
                   label="Late Check-out"
                   desc="Extend your stay until 4:00 PM on departure day."
-                  price={`$${servicePrices.lateCheckout}`}
+                  price={formatPrice(servicePrices.lateCheckout)}
                   checked={selectedServices.lateCheckout}
                   onChange={(checked) => setSelectedServices({ ...selectedServices, lateCheckout: checked })}
                 />
@@ -338,50 +363,38 @@ function BookingFormContent() {
                     <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-4">Reservation Summary</h3>
                     <div className="flex justify-between mb-2">
                       <span className="text-gray-600">{roomName} ({nights} Nights)</span>
-                      <span className="font-bold text-gray-900">${total.toFixed(2)}</span>
+                      <span className="font-bold text-gray-900">{formatPrice(total)}</span>
                     </div>
                     {selectedServices.breakfast && (
                       <div className="flex justify-between mb-2">
                         <span className="text-gray-600">Signature Breakfast ({nights} Days)</span>
-                        <span className="font-bold text-gray-900">${servicePrices.breakfast.toFixed(2)}</span>
+                        <span className="font-bold text-gray-900">{formatPrice(servicePrices.breakfast)}</span>
                       </div>
                     )}
                     {selectedServices.airport && (
                       <div className="flex justify-between mb-2">
                         <span className="text-gray-600">Airport Transfer</span>
-                        <span className="font-bold text-gray-900">${servicePrices.airport.toFixed(2)}</span>
+                        <span className="font-bold text-gray-900">{formatPrice(servicePrices.airport)}</span>
                       </div>
                     )}
                     {selectedServices.lateCheckout && (
                       <div className="flex justify-between mb-2">
                         <span className="text-gray-600">Late Check-out</span>
-                        <span className="font-bold text-gray-900">${servicePrices.lateCheckout.toFixed(2)}</span>
+                        <span className="font-bold text-gray-900">{formatPrice(servicePrices.lateCheckout)}</span>
                       </div>
                     )}
                     <div className="flex justify-between pt-4 border-t border-gray-200 mt-4">
                       <span className="text-lg font-semibold text-gray-900">Total Amount</span>
-                      <span className="text-lg font-semibold text-emerald-600">${calculateTotal().toFixed(2)}</span>
+                      <span className="text-lg font-semibold text-emerald-600">{formatPrice(calculateTotal())}</span>
                     </div>
                   </div>
                   <div className="space-y-4">
                     <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-widest">Payment Method</h3>
                     {process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ? (
-                      <div className="p-4 border border-gray-300 rounded-lg">
-                        <CardElement
-                          options={{
-                            style: {
-                              base: {
-                                fontSize: "16px",
-                                color: "#1a1a1a",
-                                "::placeholder": { color: "#999" },
-                              },
-                            },
-                          }}
-                        />
-                      </div>
+                      <StripeCardInput onStripeReady={(s, e) => setStripeRef({ stripe: s, elements: e })} />
                     ) : (
                       <div className="p-4 border border-gray-300 rounded-lg bg-gray-50 text-gray-600">
-                        💳 Payment will be processed upon check-in.
+                        💳 Payment will be processed upon check-in (Cash / Credit Card in PKR).
                       </div>
                     )}
                   </div>
@@ -394,7 +407,7 @@ function BookingFormContent() {
                     <div className="p-4 bg-white flex-grow">
                       <p className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded w-fit mb-2">SELECTED ROOM</p>
                       <h4 className="text-lg font-semibold text-gray-900">{roomName}</h4>
-                      <p className="text-sm text-gray-600 mt-2">Room {roomId} • {nights} Nights</p>
+                      <p className="text-sm text-gray-600 mt-2">Room #{roomId} • {nights} Nights</p>
                     </div>
                   </div>
                 </div>
@@ -448,4 +461,4 @@ export default function BookingPage() {
       )}
     </Suspense>
   )
-}
+}

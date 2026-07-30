@@ -1,6 +1,6 @@
 "use client"
 
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { formatPrice } from "@/lib/utils/currency"
 
 interface RoomCardProps {
@@ -40,6 +40,19 @@ export default function RoomCard({
   totalPrice,
   nights,
 }: RoomCardProps) {
+  const router = useRouter()
+
+  const handleBookClick = () => {
+    const bookingUrl = `/booking?roomId=${id}&checkIn=${checkIn}&checkOut=${checkOut}&guests=${guests}&price=${pricePerNight}&total=${totalPrice}&nights=${nights}&roomName=${encodeURIComponent(roomType.name)}`
+    
+    const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null
+    if (!token) {
+      router.push(`/auth/login?redirect=${encodeURIComponent(bookingUrl)}`)
+    } else {
+      router.push(bookingUrl)
+    }
+  }
+
   return (
     <div className="group bg-white border border-outline-variant/30 rounded-xl overflow-hidden shadow-sm hover:scale-[1.01] transition-transform duration-300">
       <div className="relative aspect-[4/3] overflow-hidden">
@@ -59,7 +72,7 @@ export default function RoomCard({
         <div className="flex justify-between items-start">
           <div>
             <h3 className="text-2xl text-primary">{roomType.name}</h3>
-            <p className="text-sm text-on-surface-variant">{roomType.hotel.name} • Room {roomNumber} • Floor {floor}</p>
+            <p className="text-sm text-on-surface-variant">{roomType.hotel.name} • Room #{roomNumber} • Floor {floor}</p>
           </div>
           <div className="text-right">
             <span className="block text-2xl text-secondary">{formatPrice(pricePerNight)}</span>
@@ -74,25 +87,13 @@ export default function RoomCard({
             </div>
           ))}
         </div>
-        <Link
-          href={{
-            pathname: "/booking",
-            query: {
-              roomId: id,
-              checkIn,
-              checkOut,
-              guests,
-              price: pricePerNight,
-              total: totalPrice,
-              nights,
-              roomName: roomType.name,
-            },
-          }}
+        <button
+          onClick={handleBookClick}
           className="w-full border border-primary text-primary py-3 rounded-lg text-sm font-semibold hover:bg-primary hover:text-white transition-all uppercase tracking-widest text-center block"
         >
           Book Now
-        </Link>
+        </button>
       </div>
     </div>
   )
-}
+}
