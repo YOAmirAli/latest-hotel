@@ -1,11 +1,14 @@
 "use client"
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
-export default function LoginPage() {
+function LoginFormContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirect = searchParams.get('redirect')
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -29,7 +32,9 @@ export default function LoginPage() {
         document.cookie = `token=${data.token}; path=/; max-age=604800`
 
         const payload = JSON.parse(atob(data.token.split('.')[1]))
-        if (payload.role === 'admin') {
+        if (redirect) {
+          router.push(redirect)
+        } else if (payload.role === 'admin') {
           router.push('/admin')
         } else if (payload.role === 'hotel_manager') {
           router.push('/manager')
@@ -54,7 +59,7 @@ export default function LoginPage() {
         <div className="text-center">
           <Link href="/" className="font-display-lg text-4xl text-primary block">LuxeStay</Link>
           <h2 className="mt-6 font-headline-sm text-2xl text-gray-900">Welcome back</h2>
-          <p className="mt-2 text-gray-600">Sign in to your account</p>
+          <p className="mt-2 text-gray-600">Sign in to your account to complete your booking</p>
         </div>
 
         {error && (
@@ -98,8 +103,8 @@ export default function LoginPage() {
           </button>
 
           <div className="text-center text-sm text-gray-600">
-                  Dont have an account?{' '}
-            <Link href="/auth/register" className="text-emerald-600 hover:underline font-medium">
+            Don't have an account?{' '}
+            <Link href={redirect ? `/auth/register?redirect=${encodeURIComponent(redirect)}` : "/auth/register"} className="text-emerald-600 hover:underline font-medium">
               Create one
             </Link>
           </div>
@@ -108,3 +113,11 @@ export default function LoginPage() {
     </div>
   )
 }
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <LoginFormContent />
+    </Suspense>
+  )
+}
