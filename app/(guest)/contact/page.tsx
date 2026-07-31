@@ -39,9 +39,12 @@ export default function ContactPage() {
           <h1 className="font-display-lg text-4xl md:text-6xl mb-6 font-normal">
             Contact <span className="italic text-amber-200">LuxeStay</span>
           </h1>
-          <p className="text-white/60 font-light text-lg">
-            Have questions about room availability, custom bookings, or special requests? Get in touch with our 24/7 guest support team.
-          </p>
+              <p className="text-white/60 font-light text-lg">
+                At LuxeStay, we are always here to assist you. Whether you have questions about room availability, special requests, event bookings, or need personalized assistance, our dedicated 24/7 guest support team is ready to help.
+              </p>
+              <p className="text-white/60 font-light text-lg mt-4">
+                Reach out to us through any of the methods below, and we will ensure your inquiries are handled with the utmost care and efficiency. Your comfort and satisfaction are our top priorities.
+              </p>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 items-start">

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import ChatWidget from '@/components/chat/ChatWidget'
 
 const navItems = [
   { label: 'Dashboard', href: '/admin', icon: 'dashboard' },
@@ -35,30 +36,28 @@ export default function AdminLayout({
     } catch {
       router.push('/login')
     }
-    // Use a timeout to avoid the cascading renders warning
-    const timer = setTimeout(() => {
-      setLoading(false)
-    }, 100)
+    const timer = setTimeout(() => setLoading(false), 100)
     return () => clearTimeout(timer)
   }, [router])
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-secondary border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="mt-4 text-on-surface-variant">Loading...</p>
+          <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="mt-4 text-gray-500">Loading...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <aside className="fixed left-0 top-0 h-full w-64 bg-primary text-on-primary shadow-2xl flex flex-col py-6 z-40">
+    <div className="flex min-h-screen bg-gray-50">
+      {/* Sidebar */}
+      <aside className="fixed left-0 top-0 h-full w-64 bg-white shadow-xl flex flex-col py-6 z-40 border-r border-gray-100">
         <div className="px-6 mb-8">
-          <div className="font-display-lg text-2xl text-on-primary">LuxeStay</div>
-          <p className="text-sm text-on-primary/70 mt-1">Admin Panel</p>
+          <div className="font-display-lg text-2xl text-emerald-700">LuxeStay</div>
+          <p className="text-sm text-gray-500 mt-1">Admin Panel</p>
         </div>
         <nav className="flex-1 px-4 space-y-1">
           {navItems.map((item) => {
@@ -69,33 +68,38 @@ export default function AdminLayout({
                 href={item.href}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
                   isActive
-                    ? 'bg-on-primary/10 text-on-primary'
-                    : 'text-on-primary/60 hover:bg-on-primary/5 hover:text-on-primary'
+                    ? 'bg-emerald-50 text-emerald-700 font-medium'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
               >
                 <span className="material-symbols-outlined text-xl">{item.icon}</span>
-                <span className="font-medium text-sm">{item.label}</span>
+                <span className="text-sm">{item.label}</span>
               </Link>
             )
           })}
         </nav>
-        <div className="border-t border-on-primary/10 pt-4 px-6">
+        <div className="border-t border-gray-100 pt-4 px-6">
           <button
             onClick={() => {
               localStorage.removeItem('token')
               document.cookie = 'token=; path=/; max-age=0'
               router.push('/login')
             }}
-            className="flex items-center gap-3 text-on-primary/60 hover:text-on-primary transition-all w-full py-2"
+            className="flex items-center gap-3 text-gray-500 hover:text-red-600 transition-all w-full py-2"
           >
             <span className="material-symbols-outlined">logout</span>
             <span className="text-sm font-medium">Logout</span>
           </button>
         </div>
       </aside>
-      <main className="flex-1 ml-64 min-h-screen p-8 bg-surface-container-low">
+
+      {/* Main Content */}
+      <main className="flex-1 ml-64 min-h-screen p-8 bg-gray-50">
         {children}
       </main>
+
+      {/* Chat Widget – visible on all admin pages */}
+      <ChatWidget />
     </div>
   )
 }

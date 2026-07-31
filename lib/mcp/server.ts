@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/db/prisma'
 
 export const mcpTools = {
-  // Check availability
+  // ----- Guest/User tools -----
   checkAvailability: async (checkIn: string, checkOut: string, guests: number = 2) => {
     const rooms = await prisma.room.findMany({
       where: {
@@ -28,10 +28,9 @@ export const mcpTools = {
         },
       },
     })
-    return rooms
+    return { success: true, count: rooms.length, rooms }
   },
 
-  // Create booking
   createBooking: async (data: {
     roomId: number
     checkIn: string
@@ -45,7 +44,6 @@ export const mcpTools = {
     const firstName = nameParts[0]
     const lastName = nameParts.slice(1).join(' ') || 'Guest'
 
-    // Find or create guest
     let guest = await prisma.guest.findUnique({ where: { email: guestEmail } })
     if (!guest) {
       guest = await prisma.guest.create({
@@ -53,7 +51,6 @@ export const mcpTools = {
       })
     }
 
-    // Get room with price
     const room = await prisma.room.findUnique({
       where: { id: roomId },
       include: { roomType: true },
@@ -63,7 +60,7 @@ export const mcpTools = {
     const nights = Math.ceil(
       (new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)
     )
-    const total = room.roomType.basePrice * (nights > 0 ? nights : 1)
+    const total = room.roomType.basePrice * nights
 
     const booking = await prisma.booking.create({
       data: {
@@ -77,19 +74,17 @@ export const mcpTools = {
       },
     })
 
-    return { bookingId: booking.id, total, nights }
+    return { success: true, bookingId: booking.id, total, nights }
   },
 
-  // Cancel booking
   cancelBooking: async (bookingId: number) => {
     const booking = await prisma.booking.update({
       where: { id: bookingId },
       data: { status: 'cancelled' },
     })
-    return { bookingId: booking.id, status: booking.status }
+    return { success: true, bookingId: booking.id, status: booking.status }
   },
 
-  // Get booking details
   getBooking: async (bookingId: number) => {
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
@@ -100,14 +95,176 @@ export const mcpTools = {
     })
     if (!booking) throw new Error('Booking not found')
     return {
-      id: booking.id,
-      guest: `${booking.guest.firstName} ${booking.guest.lastName}`,
-      room: booking.room.roomNumber,
-      roomType: booking.room.roomType.name,
-      checkIn: booking.checkIn,
-      checkOut: booking.checkOut,
-      total: booking.totalAmount,
-      status: booking.status,
+      success: true,
+      booking: {
+        id: booking.id,
+        guest: `${booking.guest.firstName} ${booking.guest.lastName}`,
+        room: booking.room.roomNumber,
+        roomType: booking.room.roomType.name,
+        checkIn: booking.checkIn,
+        checkOut: booking.checkOut,
+        total: booking.totalAmount,
+        status: booking.status,
+      },
     }
+  },
+
+  // ----- Admin tools -----
+  removeUser: async (userId: number) => {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { guest: true },
+    })
+    if (!user) throw new Error('User not found')
+    if (user.role === 'admin') throw new Error('Cannot remove admin user')
+
+    if (user.guest) {
+      await prisma.guest.delete({ where: { id: user.guest.id } })
+    }
+    await prisma.user.delete({ where: { id: userId } })
+    return { success: true, message: `User ${user.email} removed` }
+  },
+
+  removeHotel: async (hotelId: number) => {
+    const hotel = await prisma.hotel.findUnique({
+      where: { id: hotelId },
+      include: { roomTypes: { include: { rooms: true } } },
+    })
+    if (!hotel) throw new Error('Hotel not found')
+
+    for (const rt of hotel.roomTypes) {
+      await prisma.room.deleteMany({ where: { roomTypeId: rt.id } })
+    }
+    await prisma.roomType.deleteMany({ where: { hotelId: hotel.id } })
+    await prisma.hotel.delete({ where: { id: hotelId } })
+    return { success: true, message: `Hotel "${hotel.name}" removed` }
+  },
+
+  processRegistration: async (registrationId: number, action: 'approve' | 'reject', adminId: number) => {
+    const registration = await prisma.hotelRegistration.findUnique({
+      where: { id: registrationId },
+      include: { manager: true },
+    })
+    if (!registration) throw new Error('Registration not found')
+    if (registration.status !== 'pending') throw new Error('Registration already processed')
+
+    if (action === 'approve') {
+      const hotel = await prisma.hotel.create({
+        data: {
+          name: registration.hotelName,
+          description: registration.description,
+          address: registration.hotelAddress,
+          city: registration.hotelCity,
+          country: registration.hotelCountry,
+          phone: registration.hotelPhone,
+          email: registration.hotelEmail,
+          status: 'approved',
+          approvedAt: new Date(),
+          approvedBy: adminId,
+          registrationId: registration.id,
+        },
+      })
+      await prisma.hotelRegistration.update({
+        where: { id: registrationId },
+        data: {
+          status: 'approved',
+          processedAt: new Date(),
+          processedBy: adminId,
+          hotelId: hotel.id,
+        },
+      })
+      if (registration.manager) {
+        await prisma.user.update({
+          where: { id: registration.manager.id },
+          data: { hotelId: hotel.id, role: 'hotel_manager' },
+        })
+      }
+      return { success: true, message: `Hotel "${hotel.name}" approved` }
+    } else {
+      await prisma.hotelRegistration.update({
+        where: { id: registrationId },
+        data: {
+          status: 'rejected',
+          processedAt: new Date(),
+          processedBy: adminId,
+        },
+      })
+      if (registration.manager) {
+        await prisma.user.update({
+          where: { id: registration.manager.id },
+          data: { role: 'guest' },
+        })
+      }
+      return { success: true, message: `Registration for "${registration.hotelName}" rejected` }
+    }
+  },
+
+  // ----- Stats tool -----
+  getStats: async () => {
+    const [totalRegistrations, pendingRegistrations, approvedHotels, totalUsers, totalRooms] = await Promise.all([
+      prisma.hotelRegistration.count(),
+      prisma.hotelRegistration.count({ where: { status: 'pending' } }),
+      prisma.hotel.count({ where: { status: 'approved' } }),
+      prisma.user.count(),
+      prisma.room.count(),
+    ])
+    return {
+      success: true,
+      totalRegistrations,
+      pendingRegistrations,
+      approvedHotels,
+      totalUsers,
+      totalRooms,
+    }
+  },
+
+  // ----- Add hotel (admin) -----
+  addHotel: async (data: {
+    name: string
+    description?: string
+    address?: string
+    city?: string
+    country?: string
+    phone?: string
+    email?: string
+    imageUrl?: string
+  }) => {
+    const { name, description, address, city, country, phone, email, imageUrl } = data
+
+    // Create a registration first (required for hotel creation)
+    const registration = await prisma.hotelRegistration.create({
+      data: {
+        hotelName: name,
+        managerEmail: email || 'admin@luxestay.com',
+        managerFirstName: 'Admin',
+        managerLastName: 'User',
+        status: 'approved',
+        hotelAddress: address,
+        hotelCity: city || 'Islamabad',
+        hotelCountry: country || 'Pakistan',
+        hotelPhone: phone,
+        hotelEmail: email,
+        description: description,
+      },
+    })
+
+    const hotel = await prisma.hotel.create({
+      data: {
+        name,
+        description,
+        address,
+        city: city || 'Islamabad',
+        country: country || 'Pakistan',
+        phone,
+        email,
+        imageUrl,
+        status: 'approved',
+        registrationId: registration.id,
+        approvedBy: 1, // admin ID – you might want to fetch actual admin
+        approvedAt: new Date(),
+      },
+    })
+
+    return { success: true, message: `Hotel "${hotel.name}" added successfully!`, hotel }
   },
 }

@@ -7,6 +7,9 @@ export async function GET(
 ) {
   try {
     const bookingId = parseInt(params.id)
+    if (isNaN(bookingId)) {
+      return NextResponse.json({ error: 'Invalid booking ID' }, { status: 400 })
+    }
 
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
@@ -30,7 +33,7 @@ export async function GET(
 
     return NextResponse.json({ success: true, data: booking })
   } catch (error) {
-    console.error(error)
+    console.error('Fetch booking error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

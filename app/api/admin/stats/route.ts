@@ -8,17 +8,17 @@ export async function GET(request: NextRequest) {
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-
     const payload = verifyToken(token)
     if (!payload || payload.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const [totalRegistrations, pendingRegistrations, approvedHotels, totalUsers] = await Promise.all([
+    const [totalRegistrations, pendingRegistrations, approvedHotels, totalUsers, totalRooms] = await Promise.all([
       prisma.hotelRegistration.count(),
       prisma.hotelRegistration.count({ where: { status: 'pending' } }),
       prisma.hotel.count({ where: { status: 'approved' } }),
       prisma.user.count(),
+      prisma.room.count(),
     ])
 
     return NextResponse.json({
@@ -28,13 +28,11 @@ export async function GET(request: NextRequest) {
         pendingRegistrations,
         approvedHotels,
         totalUsers,
+        totalRooms,
       },
     })
   } catch (error) {
-    console.error(error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    console.error('Stats error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
