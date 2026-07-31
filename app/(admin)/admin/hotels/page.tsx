@@ -165,8 +165,6 @@ export default function AdminHotelsPage() {
                 />
               </div>
             </div>
-
-            {/* Image Upload */}
             <div>
               <ImageUpload
                 label="Hotel Cover Image"
@@ -174,7 +172,6 @@ export default function AdminHotelsPage() {
                 onUpload={(url) => setForm({ ...form, imageUrl: url })}
               />
             </div>
-
             <button
               type="submit"
               disabled={saving}
@@ -189,18 +186,18 @@ export default function AdminHotelsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {hotels.map((hotel) => (
           <div key={hotel.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-            <div 
-              className="h-48 bg-cover bg-center" 
-              style={{ 
-                backgroundImage: hotel.imageUrl 
-                  ? `url(${hotel.imageUrl})` 
-                  : 'url(https://picsum.photos/seed/hotel/400/300)' 
-              }} 
+            <div
+              className="h-48 bg-cover bg-center"
+              style={{
+                backgroundImage: hotel.imageUrl
+                  ? `url(${hotel.imageUrl})`
+                  : 'url(https://picsum.photos/seed/hotel/400/300)'
+              }}
             />
             <div className="p-6">
               <h3 className="text-lg font-semibold text-gray-900">{hotel.name}</h3>
               <p className="text-sm text-gray-600">{hotel.address}</p>
-              <p className="text-sm text-gray-600">{hotel.city}</p>
+              <p className="text-sm text-gray-600">{hotel.city}, {hotel.country}</p>
               <div className="mt-4 flex items-center justify-between">
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                   hotel.status === 'approved' ? 'bg-green-100 text-green-700' :
@@ -209,12 +206,20 @@ export default function AdminHotelsPage() {
                 }`}>
                   {hotel.status}
                 </span>
-                <Link
-                  href={`/admin/hotels/${hotel.id}/rooms`}
-                  className="text-sm text-emerald-600 hover:underline"
-                >
-                  Manage Rooms →
-                </Link>
+                <div className="flex gap-2">
+                  <Link
+                    href={`/admin/hotels/${hotel.id}/rooms`}
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    Rooms
+                  </Link>
+                  <Link
+                    href={`/admin/hotels/${hotel.id}/edit`}
+                    className="text-sm text-emerald-600 hover:underline"
+                  >
+                    Edit
+                  </Link>
+                </div>
               </div>
             </div>
           </div>

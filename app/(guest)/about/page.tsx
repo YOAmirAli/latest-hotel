@@ -20,7 +20,11 @@ export default function AboutPage() {
             <span className="italic text-amber-200">Modern Tranquility</span>
           </h1>
           <p className="text-white/70 text-lg md:text-xl font-light leading-relaxed max-w-3xl mx-auto">
-            Founded with a commitment to elevate hospitality in Pakistan, LuxeStay blends breathtaking scenic locations with world-class 5-star comforts. From the pristine Margalla Hills of Islamabad to city center luxury sanctuaries, we curate experiences that linger in your memory forever.
+            LuxeStay is a premier hospitality provider dedicated to offering unparalleled luxury and comfort across Pakistan. Our vision is to create serene sanctuaries where guests can escape the ordinary and immerse themselves in extraordinary experiences. We meticulously select breathtaking locations, from the majestic Margalla Hills of Islamabad to vibrant city centers, ensuring each LuxeStay property offers a unique blend of natural beauty and sophisticated design.
+
+            Our commitment extends beyond luxurious accommodations. We strive to provide a holistic experience, blending ancient Pakistani traditions of hospitality with modern amenities and personalized services. At LuxeStay, every detail is thoughtfully curated to ensure your stay is not just a visit, but a cherished memory that rejuvenates your mind, body, and soul.
+
+            Join us on a journey where heritage meets modern tranquility, and discover the true essence of Pakistani hospitality, redefined by LuxeStay.
           </p>
         </section>
 

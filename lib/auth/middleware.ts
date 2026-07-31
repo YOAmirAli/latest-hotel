@@ -15,6 +15,7 @@ const publicPaths = [
   '/api/auth/register-hotel',
   '/api/rooms/availability',
   '/api/rooms/featured',
+  '/api/bookings', // ✅ ADDED THIS
 ]
 
 // Role-based route access

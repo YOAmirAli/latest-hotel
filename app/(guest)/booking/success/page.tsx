@@ -31,17 +31,40 @@ function SuccessContent() {
   const searchParams = useSearchParams()
   const bookingId = searchParams.get("bookingId")
   const [bookingDetails, setBookingDetails] = useState<BookingDetails | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (bookingId) {
       fetch(`/api/bookings/${bookingId}`)
         .then(res => res.json())
         .then(data => {
-          if (data.success) setBookingDetails(data.data)
+          if (data.success) {
+            setBookingDetails(data.data)
+          }
         })
         .catch((error: unknown) => console.error('Error fetching booking:', error))
+        .finally(() => setLoading(false))
     }
   }, [bookingId])
+
+  // Use guest's phone number from booking, or fallback to a default
+  const guestPhone = bookingDetails?.guest?.phone || ''
+
+  // Format phone for WhatsApp (remove spaces, +, etc.)
+  const formatPhoneForWhatsApp = (phone: string) => {
+    if (!phone) return ''
+    // Remove all non-digit characters
+    let cleaned = phone.replace(/\D/g, '')
+    // If it starts with 0, replace with 92 (Pakistan)
+    if (cleaned.startsWith('0')) {
+      cleaned = '92' + cleaned.substring(1)
+    }
+    // If it doesn't start with 92, add 92
+    if (!cleaned.startsWith('92')) {
+      cleaned = '92' + cleaned
+    }
+    return cleaned
+  }
 
   const guestName = bookingDetails?.guest?.firstName + ' ' + bookingDetails?.guest?.lastName || 'Guest'
   const hotelName = bookingDetails?.room?.roomType?.hotel?.name || 'LuxeStay'
@@ -50,11 +73,8 @@ function SuccessContent() {
   const checkOut = bookingDetails?.checkOut ? new Date(bookingDetails.checkOut).toLocaleDateString() : 'N/A'
   const total = bookingDetails?.totalAmount || 0
 
-  // Manager's WhatsApp number (replace with actual)
-  const managerPhone = "923001234567"
-
   const whatsappMessage = `
-🏨 *New Booking Confirmation*
+🏨 *Booking Confirmation*
 
 👤 Guest: ${guestName}
 🏠 Hotel: ${hotelName}
@@ -67,6 +87,35 @@ Booking ID: #${bookingId}
 
 Thank you for choosing LuxeStay!
   `.trim()
+
+  // If no phone number, show a message instead of the button
+  if (!guestPhone) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 md:px-10 text-center py-20">
+        <div className="w-20 h-20 bg-emerald-100 text-emerald-600 flex items-center justify-center rounded-full mx-auto mb-6">
+          <span className="material-symbols-outlined text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+            check_circle
+          </span>
+        </div>
+        <h2 className="font-display-lg text-3xl text-primary mb-4">Booking Confirmed! 🎉</h2>
+        <p className="text-on-surface-variant mb-4">
+          Your sanctuary awaits at <strong>{hotelName}</strong>.
+          {bookingId && (
+            <>
+              <br />
+              <span className="text-sm">Booking Reference: <strong>#{bookingId}</strong></span>
+            </>
+          )}
+        </p>
+        <p className="text-gray-500">No phone number provided for WhatsApp confirmation.</p>
+        <div className="mt-6">
+          <Link href="/" className="inline-block text-emerald-600 hover:underline">
+            Back to Home
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-4 md:px-10 text-center py-20">
@@ -98,7 +147,7 @@ Thank you for choosing LuxeStay!
       </div>
 
       <WhatsAppButton
-        phoneNumber={managerPhone}
+        phoneNumber={formatPhoneForWhatsApp(guestPhone)}
         message={whatsappMessage}
         className="w-full justify-center text-lg"
       >

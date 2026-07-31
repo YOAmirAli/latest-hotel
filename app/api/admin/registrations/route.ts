@@ -13,16 +13,32 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const roomTypes = await prisma.roomType.findMany({
+    const registrations = await prisma.hotelRegistration.findMany({
+      orderBy: { submittedAt: 'desc' },
       include: {
+        manager: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        processedByUser: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
         hotel: true,
-        rooms: true,
       },
     })
 
-    return NextResponse.json({ success: true, roomTypes })
+    return NextResponse.json({ success: true, data: registrations })
   } catch (error) {
-    console.error('Rooms error:', error)
+    console.error('Registrations error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
