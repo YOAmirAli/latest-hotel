@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db/prisma'
+import { NotificationService } from '@/lib/services/notification.service'
 
 export const mcpTools = {
   // ----- Guest/User tools -----
@@ -29,6 +30,119 @@ export const mcpTools = {
       },
     })
     return { success: true, count: rooms.length, rooms }
+  },
+
+  filterHotelsAndRooms: async (params: {
+    minPrice?: number
+    maxPrice?: number
+    amenities?: string[]
+    city?: string
+    guests?: number
+    checkIn?: string
+    checkOut?: string
+  }) => {
+    const { minPrice, maxPrice, amenities = [], city, guests = 1, checkIn, checkOut } = params
+
+    let rooms = await prisma.room.findMany({
+      where: {
+        status: 'available',
+        roomType: {
+          hotel: {
+            status: 'approved',
+            ...(city ? { city: { contains: city, mode: 'insensitive' } } : {}),
+          },
+          capacity: { gte: guests },
+          ...(minPrice !== undefined || maxPrice !== undefined
+            ? {
+                basePrice: {
+                  ...(minPrice !== undefined ? { gte: minPrice } : {}),
+                  ...(maxPrice !== undefined ? { lte: maxPrice } : {}),
+                },
+              }
+            : {}),
+        },
+      },
+      include: {
+        roomType: {
+          include: { hotel: true },
+        },
+      },
+    })
+
+    if (amenities.length > 0) {
+      rooms = rooms.filter((room) => {
+        const raw = room.roomType.amenities
+        let roomAmenities: string[] = []
+        if (Array.isArray(raw)) {
+          roomAmenities = raw.map((a) => String(a).toLowerCase())
+        } else if (typeof raw === 'string') {
+          roomAmenities = [raw.toLowerCase()]
+        }
+        return amenities.every((req) =>
+          roomAmenities.some((ra) => ra.includes(req.toLowerCase()))
+        )
+      })
+    }
+
+    return {
+      success: true,
+      count: rooms.length,
+      filterApplied: { minPrice, maxPrice, amenities, city, guests },
+      rooms: rooms.map((r) => ({
+        id: r.id,
+        roomNumber: r.roomNumber,
+        hotelName: r.roomType.hotel.name,
+        city: r.roomType.hotel.city,
+        roomType: r.roomType.name,
+        pricePerNight: r.roomType.basePrice,
+        capacity: r.roomType.capacity,
+        amenities: r.roomType.amenities,
+      })),
+    }
+  },
+
+  sendRoomDetails: async (phone: string, roomId: number, customNote?: string) => {
+    const room = await prisma.room.findUnique({
+      where: { id: roomId },
+      include: {
+        roomType: {
+          include: { hotel: true },
+        },
+      },
+    })
+    if (!room) throw new Error('Room not found')
+
+    const rawAmenities = room.roomType.amenities
+    let amenitiesList: string[] = []
+    if (Array.isArray(rawAmenities)) {
+      amenitiesList = rawAmenities.map((a) => String(a))
+    } else if (typeof rawAmenities === 'string') {
+      amenitiesList = [rawAmenities]
+    }
+
+    const result = await NotificationService.sendRoomDetailsToPhone(
+      phone,
+      {
+        roomId: room.id,
+        roomNumber: room.roomNumber,
+        roomTypeName: room.roomType.name,
+        hotelName: room.roomType.hotel.name,
+        hotelCity: room.roomType.hotel.city,
+        hotelAddress: room.roomType.hotel.address,
+        basePrice: room.roomType.basePrice,
+        capacity: room.roomType.capacity,
+        amenities: amenitiesList,
+        description: room.roomType.description,
+        imageUrl: room.roomType.imageUrl,
+      },
+      customNote
+    )
+
+    return {
+      success: true,
+      message: `Room details sent to ${phone}`,
+      details: result,
+    }
   },
 
   createBooking: async (data: {
@@ -231,7 +345,6 @@ export const mcpTools = {
   }) => {
     const { name, description, address, city, country, phone, email, imageUrl } = data
 
-    // Create a registration first (required for hotel creation)
     const registration = await prisma.hotelRegistration.create({
       data: {
         hotelName: name,
@@ -260,7 +373,7 @@ export const mcpTools = {
         imageUrl,
         status: 'approved',
         registrationId: registration.id,
-        approvedBy: 1, // admin ID – you might want to fetch actual admin
+        approvedBy: 1,
         approvedAt: new Date(),
       },
     })

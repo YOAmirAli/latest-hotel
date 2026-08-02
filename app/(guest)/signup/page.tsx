@@ -42,6 +42,22 @@ export default function SignupPage() {
     setLoading(true)
     setError('')
 
+    // ----- Frontend validation -----
+    if (!form.username.trim()) {
+      setError('Username is required')
+      setLoading(false)
+      return
+    }
+    if (!form.email.trim()) {
+      setError('Email is required')
+      setLoading(false)
+      return
+    }
+    if (form.password.length < 6) {
+      setError('Password must be at least 6 characters')
+      setLoading(false)
+      return
+    }
     if (form.password !== form.confirmPassword) {
       setError('Passwords do not match')
       setLoading(false)
@@ -53,9 +69,9 @@ export default function SignupPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          firstName: form.username,
-          lastName: '',
-          email: form.email,
+          firstName: form.username.trim(),
+          lastName: 'User', // Default last name – you can change to form.lastName if you add a field
+          email: form.email.trim(),
           password: form.password,
           role: 'guest',
         }),
