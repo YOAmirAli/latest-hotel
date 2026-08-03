@@ -4,9 +4,10 @@ import { verifyToken } from '@/lib/auth/jwt'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const token = request.headers.get('Authorization')?.replace('Bearer ', '')
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -16,7 +17,7 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const hotelId = parseInt(params.id)
+    const hotelId = parseInt(id)
     if (isNaN(hotelId)) {
       return NextResponse.json({ error: 'Invalid hotel ID' }, { status: 400 })
     }
@@ -82,9 +83,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const token = request.headers.get('Authorization')?.replace('Bearer ', '')
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -94,7 +96,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const hotelId = parseInt(params.id)
+    const hotelId = parseInt(id)
     if (isNaN(hotelId)) {
       return NextResponse.json({ error: 'Invalid hotel ID' }, { status: 400 })
     }

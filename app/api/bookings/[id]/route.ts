@@ -3,10 +3,11 @@ import { prisma } from '@/lib/db/prisma'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const bookingId = parseInt(params.id)
+    const { id } = await params
+    const bookingId = parseInt(id)
     if (isNaN(bookingId)) {
       return NextResponse.json({ error: 'Invalid booking ID' }, { status: 400 })
     }
