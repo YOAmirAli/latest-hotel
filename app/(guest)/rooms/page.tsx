@@ -98,7 +98,7 @@ export default function RoomsPage() {
     } catch (error) {
       console.error("Error fetching rooms:", error)
       setRooms([])
-    } font-semibold finally {
+    } finally {
       setLoading(false)
     }
   }

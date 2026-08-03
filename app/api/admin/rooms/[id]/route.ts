@@ -37,7 +37,7 @@ export async function PATCH(
     include: { hotel: { select: { id: true, name: true } }, rooms: true },
   })
 
-  return jsonResponse({ roomType })
+  return jsonResponse({ success: true, roomType })
 }
 
 export async function DELETE(
@@ -53,9 +53,9 @@ export async function DELETE(
 
   const roomCount = await prisma.room.count({ where: { roomTypeId } })
   if (roomCount > 0) {
-    return errorResponse('Cannot delete room type with assigned rooms. Remove rooms first.', 400)
+    return errorResponse('Cannot delete room type with assigned rooms. Delete or reassign rooms first.', 400)
   }
 
   await prisma.roomType.delete({ where: { id: roomTypeId } })
-  return jsonResponse({ message: 'Room type deleted' })
+  return jsonResponse({ success: true, message: 'Room type deleted' })
 }
